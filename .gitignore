@@ -1,10 +1,26 @@
-__pycache__
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-__pycache__/
 *.so
 *.dylib
+
+# Distribution
 *.egg-info/
 dist/
+build/
+
+# Virtual environment
 venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
