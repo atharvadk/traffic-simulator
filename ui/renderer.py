@@ -38,7 +38,7 @@ class Renderer:
         self.font_medium = pygame.font.SysFont("monospace", 18)
         self.font_large  = pygame.font.SysFont("monospace", 22)
 
-    def draw(self, intersection, controller):
+    def draw(self, intersection, controller, algo_name='fixed', emergency=None, profile_name='morning'):
         self.screen.fill(DARK_GRAY)
         self._draw_roads()
         self._draw_intersection_box()
@@ -46,8 +46,10 @@ class Renderer:
         self._draw_traffic_lights(intersection)
         self._draw_vehicles(intersection)
         self._draw_lane_labels()
-        self._draw_status(controller, intersection)
+        self._draw_status(controller, intersection, algo_name, emergency, profile_name)
         self._draw_legend()
+        if emergency and emergency.active:
+            self._draw_emergency_overlay(emergency)
 
     # ── roads ──────────────────────────────────────────────────────────
     def _draw_roads(self):
@@ -79,7 +81,6 @@ class Renderer:
                 pygame.draw.rect(self.screen, LINE_COLOR,
                                  (cx - 2, y, 4, 16))
 
-        # road edge lines
         pygame.draw.line(self.screen, GRAY,
                          (0, cy - rw // 2), (cx - rw // 2, cy - rw // 2), 1)
         pygame.draw.line(self.screen, GRAY,
@@ -117,10 +118,8 @@ class Renderer:
     def _draw_light_box(self, x, y, is_green, label):
         box_w, box_h = 28, 76
 
-        # shadow
         pygame.draw.rect(self.screen, (10, 10, 10),
                          (x + 3, y + 3, box_w, box_h), border_radius=6)
-        # housing
         pygame.draw.rect(self.screen, (20, 20, 20),
                          (x, y, box_w, box_h), border_radius=6)
         pygame.draw.rect(self.screen, GRAY,
@@ -129,18 +128,15 @@ class Renderer:
         red_color   = RED_LIGHT   if not is_green else LIGHT_OFF
         green_color = GREEN_LIGHT if is_green     else LIGHT_OFF
 
-        # red
         pygame.draw.circle(self.screen, red_color,
                            (x + box_w // 2, y + 16), 10)
         if not is_green:
             pygame.draw.circle(self.screen, (255, 80, 80),
                                (x + box_w // 2 - 3, y + 12), 3)
 
-        # yellow
         pygame.draw.circle(self.screen, LIGHT_OFF,
                            (x + box_w // 2, y + 38), 10)
 
-        # green
         pygame.draw.circle(self.screen, green_color,
                            (x + box_w // 2, y + 60), 10)
         if is_green:
@@ -175,21 +171,17 @@ class Renderer:
                     x = cx - dist - 16
                     y = cy + 10
 
-                # vehicle body
                 pygame.draw.rect(self.screen, color,
                                  (x, y, 16, 16), border_radius=3)
 
-                # darker outline
                 darker = tuple(max(0, c - 60) for c in color)
                 pygame.draw.rect(self.screen, darker,
                                  (x, y, 16, 16), 1, border_radius=3)
 
-                # emergency flash border
                 if vehicle.type == 'emergency':
                     pygame.draw.rect(self.screen, WHITE,
                                      (x - 1, y - 1, 18, 18), 2, border_radius=3)
 
-                # wait time indicator — tiny dot turns red if waiting long
                 if vehicle.wait_time > 15:
                     pygame.draw.circle(self.screen, (255, 80, 80),
                                        (x + 14, y + 2), 3)
@@ -211,18 +203,21 @@ class Renderer:
             self.screen.blit(txt, (lx, ly))
 
     # ── status panel ───────────────────────────────────────────────────
-    def _draw_status(self, controller, intersection):
-        # background panel
-        panel = pygame.Surface((420, 140), pygame.SRCALPHA)
+    def _draw_status(self, controller, intersection, algo_name='fixed', emergency=None, profile_name='morning'):
+        panel = pygame.Surface((440, 208), pygame.SRCALPHA)
         panel.fill((0, 0, 0, 140))
         self.screen.blit(panel, (10, 10))
 
-        # current phase
-        status = controller.get_status()
-        txt    = self.font_large.render(status, True, (255, 220, 50))
+        if emergency and emergency.active:
+            status = emergency.get_status()
+            col    = (255, 80, 80) if emergency.flash_on else (180, 40, 40)
+        else:
+            status = controller.get_status()
+            col    = (255, 220, 50)
+
+        txt = self.font_large.render(status, True, col)
         self.screen.blit(txt, (20, 18))
 
-        # cycle + cleared + avg wait
         summary = (
             f"Cycle: {intersection.cycle_count}   "
             f"Cleared: {intersection.cleared_count}   "
@@ -231,7 +226,6 @@ class Renderer:
         txt = self.font_medium.render(summary, True, (180, 180, 180))
         self.screen.blit(txt, (20, 46))
 
-        # per lane info
         y = 74
         for lane in LANE_NAMES:
             q      = intersection.queue_length(lane)
@@ -239,7 +233,6 @@ class Renderer:
             pres   = intersection.total_pressure(lane)
             col    = (255, 100, 100) if intersection.is_starving(lane) else (200, 200, 200)
 
-            # green indicator dot
             dot_col = GREEN_LIGHT if intersection.is_green(lane) else RED_LIGHT
             pygame.draw.circle(self.screen, dot_col, (28, y + 7), 5)
 
@@ -248,6 +241,49 @@ class Renderer:
                 True, col)
             self.screen.blit(txt, (38, y))
             y += 18
+
+        algo_colors = {
+            'fixed':  (150, 150, 255),
+            'greedy': (100, 255, 180),
+            'dp':     (255, 200,  80)
+        }
+        txt = self.font_small.render(
+            f"Algorithm: {algo_name.upper()}    [1] Fixed  [2] Greedy  [3] DP",
+            True, algo_colors.get(algo_name, WHITE)
+        )
+        self.screen.blit(txt, (20, 152))
+
+        profile_colors = {
+            'morning':   (255, 200,  80),
+            'afternoon': (100, 220, 255),
+            'evening':   (255, 140,  60),
+            'night':     (160, 120, 255),
+        }
+        txt = self.font_small.render(
+            f"Profile: {profile_name.upper()}   [P] cycle profiles",
+            True, profile_colors.get(profile_name, WHITE)
+        )
+        self.screen.blit(txt, (20, 170))
+
+        txt = self.font_small.render(
+            "[E] Emergency   [1] Fixed  [2] Greedy  [3] DP",
+            True, (140, 140, 140)
+        )
+        self.screen.blit(txt, (20, 188))
+
+    # ── emergency overlay ──────────────────────────────────────────────
+    def _draw_emergency_overlay(self, emergency):
+        if emergency.flash_on:
+            pygame.draw.rect(self.screen, (220, 0, 0),
+                             (0, 0, self.w, self.h), 6)
+
+        col = (255, 60, 60) if emergency.flash_on else (160, 30, 30)
+        txt = self.font_large.render(
+            f"EMERGENCY VEHICLE — {emergency.ev_lane} LANE",
+            True, col
+        )
+        tw = txt.get_width()
+        self.screen.blit(txt, (self.w // 2 - tw // 2, self.h - 50))
 
     # ── legend ─────────────────────────────────────────────────────────
     def _draw_legend(self):
