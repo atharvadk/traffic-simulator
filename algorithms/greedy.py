@@ -10,32 +10,23 @@ class GreedyController:
         self.phase_in_group = 0
         self.group          = 0
         self.groups         = [
-            ['North', 'East'],
-            ['South', 'West']
+            ['North-Left', 'North-Right', 'East-Left', 'East-Right'],
+            ['South-Left', 'South-Right', 'West-Left', 'West-Right'],
         ]
 
     def _pick_lane(self, candidates, intersection):
-        # starvation check first — only among current group
         for lane in candidates:
             if intersection.starvation_timers[lane] >= MAX_WAIT_CAP:
                 return lane
-
-        # pick highest pressure lane in this group
-        return max(
-            candidates,
-            key=lambda lane: intersection.total_pressure(lane)
-        )
+        return max(candidates,
+                   key=lambda l: intersection.total_pressure(l))
 
     def _allocate_time(self, lane, intersection):
-        lane_pressure  = intersection.total_pressure(lane)
-        total_pressure = sum(intersection.total_pressure(l) for l in LANE_NAMES)
-
-        if total_pressure == 0:
+        lp = intersection.total_pressure(lane)
+        tp = sum(intersection.total_pressure(l) for l in LANE_NAMES)
+        if tp == 0:
             return MIN_GREEN_TIME
-
-        ratio = lane_pressure / total_pressure
-        time  = ratio * 80
-        return max(MIN_GREEN_TIME, min(MAX_GREEN_TIME, time))
+        return max(MIN_GREEN_TIME, min(MAX_GREEN_TIME, (lp / tp) * 80))
 
     def _start_next_phase(self, intersection):
         candidates        = self.groups[self.group]
@@ -65,18 +56,22 @@ class GreedyController:
 
         if self.timer <= 0:
             self.phase_in_group += 1
-            if self.phase_in_group < 2:
-                # first lane in group done, move to second
+            if self.phase_in_group < len(self.groups[self.group]):
                 self._start_next_phase(intersection)
             else:
-                # both lanes done, pedestrian phase
-                self.ped_phase = True
-                self.ped_timer = PEDESTRIAN_TIME
+                self.ped_phase      = True
+                self.ped_timer      = PEDESTRIAN_TIME
                 intersection.current_green = set()
+
+    def apply_server_decision(self, result, intersection):
+        self.current_lane = result['next_lane']
+        intersection.current_green = {self.current_lane}
+        self.timer = result['green_time']
+        intersection.cycle_count += 1
 
     def get_status(self):
         if self.ped_phase:
-            return f"Pedestrian crossing   {self.ped_timer:.1f}s"
+            return f"Pedestrian   {self.ped_timer:.1f}s"
         if self.current_lane:
-            return f"Green: {self.current_lane}   {self.timer:.1f}s remaining"
+            return f"Green: {self.current_lane}   {self.timer:.1f}s"
         return "Initialising..."

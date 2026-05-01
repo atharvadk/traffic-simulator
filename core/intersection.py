@@ -1,7 +1,6 @@
 # core/intersection.py
 from config import LANE_NAMES, MAX_WAIT_CAP
 
-# how many seconds it takes each vehicle type to clear
 CLEAR_TIMES = {
     'two_wheeler':  0.8,
     'four_wheeler': 1.2,
@@ -29,8 +28,8 @@ class Intersection:
     def clear_vehicle(self, lane):
         if self.queues[lane]:
             v = self.queues[lane].pop(0)
-            self.total_wait   += v.wait_time
-            self.wait_samples += 1
+            self.total_wait    += v.wait_time
+            self.wait_samples  += 1
             self.cleared_count += 1
             return v
         return None
@@ -55,17 +54,20 @@ class Intersection:
         return self.starvation_timers[lane] >= MAX_WAIT_CAP
 
     def update_clearing(self, dt):
+        cleared = []
         for lane in self.current_green:
-            if not self.queues[lane]:
+            if lane not in self.queues or not self.queues[lane]:
                 continue
             self.clear_timers[lane] += dt
-            next_vehicle = self.queues[lane][0]
-            threshold    = CLEAR_TIMES.get(next_vehicle.type, 1.2)
+            threshold = CLEAR_TIMES.get(self.queues[lane][0].type, 1.2)
             while self.clear_timers[lane] >= threshold and self.queues[lane]:
                 self.clear_timers[lane] -= threshold
-                self.clear_vehicle(lane)
+                v = self.clear_vehicle(lane)
+                if v:
+                    cleared.append(v)
                 if self.queues[lane]:
                     threshold = CLEAR_TIMES.get(self.queues[lane][0].type, 1.2)
+        return cleared
 
     @property
     def avg_wait_time(self):
