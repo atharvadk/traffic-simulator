@@ -94,9 +94,12 @@ def main():
                     if not emergency.active:
                         lane = random.choice(LANE_NAMES)
                         ev   = Vehicle('emergency', lane,
-                                       'left' if 'Left' in lane else 'straight')
+                                    'left' if 'Left' in lane else 'straight')
                         intersection.add_vehicle(ev)
                         emergency.trigger(lane, intersection)
+                        # greedy and dp interrupt immediately
+                        if algo_name in ('greedy', 'dp'):
+                            controller.emergency_interrupt(lane, intersection)  
 
                 if event.key == pygame.K_f:
                     fullscreen = not fullscreen
@@ -121,6 +124,14 @@ def main():
                 controller.start(intersection)
         else:
             controller.update(dt, intersection)
+
+        # set yellow arms for renderer
+        intersection._yellow_arms = set()
+        if hasattr(controller, 'yellow_phase') and controller.yellow_phase:
+            if controller.current_group:
+                for lane in controller.current_group:
+                    arm = lane.replace('-Left','').replace('-Right','')
+                    intersection._yellow_arms.add(arm)
 
         # get cleared vehicles and spawn crossing animations
         cleared_vehicles = intersection.update_clearing(dt)

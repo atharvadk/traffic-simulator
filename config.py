@@ -2,6 +2,8 @@
 
 SCREEN_WIDTH  = 1440
 SCREEN_HEIGHT = 900
+LOW_PRESSURE_THRESHOLD = 1.0   # if group pressure drops below this, cut green early
+YELLOW_DURATION        = 2.0   # seconds of yellow warning before red
 
 VEHICLE_WEIGHTS = {
     'two_wheeler':  0.5,

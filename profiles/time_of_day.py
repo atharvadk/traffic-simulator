@@ -6,40 +6,36 @@ from config import LANE_NAMES
 PROFILES = {
     'morning': {
         'weights': {
-            'two_wheeler':  0.50,
-            'four_wheeler': 0.40,
+            'two_wheeler':  0.51,
+            'four_wheeler': 0.41,
             'heavy':        0.08,
-            'emergency':    0.02,
         },
         'arrival_rate': 0.3,
         'cycle_budget': 120
     },
     'afternoon': {
         'weights': {
-            'two_wheeler':  0.30,
-            'four_wheeler': 0.45,
+            'two_wheeler':  0.31,
+            'four_wheeler': 0.46,
             'heavy':        0.23,
-            'emergency':    0.02,
         },
         'arrival_rate': 0.15,
         'cycle_budget': 100
     },
     'evening': {
         'weights': {
-            'two_wheeler':  0.25,
-            'four_wheeler': 0.60,
+            'two_wheeler':  0.26,
+            'four_wheeler': 0.61,
             'heavy':        0.13,
-            'emergency':    0.02,
         },
         'arrival_rate': 0.25,
         'cycle_budget': 120
     },
     'night': {
         'weights': {
-            'two_wheeler':  0.15,
-            'four_wheeler': 0.20,
-            'heavy':        0.63,
-            'emergency':    0.02,
+            'two_wheeler':  0.17,
+            'four_wheeler': 0.21,
+            'heavy':        0.62,
         },
         'arrival_rate': 0.08,
         'cycle_budget': 60

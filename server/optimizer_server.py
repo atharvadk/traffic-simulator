@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, request, jsonify
-from config import LANE_NAMES, MIN_GREEN_TIME, MAX_GREEN_TIME, MAX_WAIT_CAP, VEHICLE_WEIGHTS
+from config import LANE_NAMES, MIN_GREEN_TIME, MAX_GREEN_TIME, MAX_WAIT_CAP, VEHICLE_WEIGHTS, CONFLICT_GRAPH
 
 app = Flask(__name__)
 
@@ -29,8 +29,8 @@ def allocate_time(lane, lanes_data):
     return round(max(MIN_GREEN_TIME, min(MAX_GREEN_TIME, ratio * 80)), 2)
 
 GROUPS = [
-    ['North-Left', 'North-Right', 'South-Left', 'South-Right'],
-    ['East', 'West']
+    ['North-Left', 'North-Right', 'East-Left', 'East-Right'],
+    ['South-Left', 'South-Right', 'West-Left', 'West-Right'],
 ]
 
 # ── fixed ──────────────────────────────────────────────────────────────
@@ -72,14 +72,16 @@ def greedy_decision(data):
 
 # ── dp ─────────────────────────────────────────────────────────────────
 
-CONFLICT_GRAPH = {
-    'North-Left':  {'East', 'West'},
-    'North-Right': {'East', 'West'},
-    'South-Left':  {'East', 'West'},
-    'South-Right': {'East', 'West'},
-    'East':        {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
-    'West':        {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
-}
+# CONFLICT_GRAPH = {
+#     'North-Left':  {'East-Left', 'East-Right', 'West-Left', 'West-Right'},
+#     'North-Right': {'East-Left', 'East-Right', 'West-Left', 'West-Right'},
+#     'South-Left':  {'East-Left', 'East-Right', 'West-Left', 'West-Right'},
+#     'South-Right': {'East-Left', 'East-Right', 'West-Left', 'West-Right'},
+#     'East-Left':   {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
+#     'East-Right':  {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
+#     'West-Left':   {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
+#     'West-Right':  {'North-Left', 'North-Right', 'South-Left', 'South-Right'},
+# }
 
 from itertools import combinations
 
