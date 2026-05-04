@@ -118,7 +118,7 @@ def main():
             if cleared:
                 client.request_decision(
                     intersection, algo_name,
-                    controller.group, controller.phase_in_group,
+                    0, 0,
                     on_server_decision
                 )
                 controller.start(intersection)
